@@ -3,32 +3,33 @@ import os
 import re
 
 def slugify(title):
-    # Converts title to lowercase and replaces non-alphanumeric with hyphens
     return re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
 
 def generate_blog_content(text, url, category):
     client = OpenAI()
 
     prompt = f"""
-You are a financial blogger.
+You are a financial blog writer.
 
-Write a blog using UK English based on the report below. Follow the structure and rules exactly.
-
-Structure:
-1. Slug URL: Use only lowercase title words with hyphens (no actual URL).
-2. Title: Use Heading 1, Arial font, size 20, bold.
-3. Summary: A 160-character summary with keywords.
-4. Category: {category}
-5. Body: Structure content using subheaders in Heading 2, Arial font, size 17, bold.
-6. Conclusion: Summarise key points.
-7. Disclaimer: "This content is for educational purposes only and does not constitute investment advice."
+Write a unique and plagiarism-free blog article in UK English using the content below.
 
 Rules:
-- No hyphens in text body (use symbols like ₹, $, %).
-- Ensure clarity, structure, and professionalism.
-- Output in plain Markdown format with proper spacing and bold elements.
+- Title in H1 format (Heading 1), Arial, size 20, bold
+- Subheaders in H2 (Heading 2), Arial, size 17, bold
+- Summary in ≤160 characters
+- Category should be "Market Update"
+- Do not write "Body:" anywhere
+- Do not include any URLs
+- Use ₹, $, % symbols correctly
+- Avoid hyphens in the article body
+- End with this disclaimer (exactly as given):
+---
+This blog has been written exclusively for educational purposes. The securities or companies mentioned are only examples and not recommendations. This does not constitute a personal recommendation or investment advice. It does not aim to influence any individual or entity to make investment decisions. Recipients should conduct their own research and assessments to form an independent opinion about investment decisions.
 
-Source Report:
+Investments in the securities market are subject to market risks. Read all the related documents carefully before investing.
+---
+
+Source content:
 {text}
 """
 
@@ -40,7 +41,7 @@ Source Report:
 
     content = response.choices[0].message.content
 
-    # Extract title (first markdown heading)
+    # Extract title to create slug
     match = re.search(r'^# (.+)', content, re.MULTILINE)
     if match:
         title = match.group(1)
@@ -48,5 +49,8 @@ Source Report:
         content = f"Slug URL: {slug}\n\n{content}"
     else:
         content = "Slug URL: could-not-generate\n\n" + content
+
+    # Override category to "Market Update"
+    content = re.sub(r'(?i)(\*\*Category:\*\*).*', r'**Category:** Market Update', content)
 
     return content

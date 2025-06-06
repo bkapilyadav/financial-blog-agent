@@ -3,29 +3,32 @@ import os
 import re
 
 def slugify(title):
-    # Lowercase, remove special characters, replace spaces with hyphens
-    return "www.finblog.com/" + re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
+    # Converts title to lowercase and replaces non-alphanumeric with hyphens
+    return re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
 
 def generate_blog_content(text, url, category):
     client = OpenAI()
 
     prompt = f"""
-You are a professional financial blogger.
+You are a financial blogger.
 
-Generate a unique, plagiarism-free financial blog article in UK English based on the following content extracted from the URL: {url}.
+Write a blog using UK English based on the report below. Follow the structure and rules exactly.
 
-Category: {category}
+Structure:
+1. Slug URL: Use only lowercase title words with hyphens (no actual URL).
+2. Title: Use Heading 1, Arial font, size 20, bold.
+3. Summary: A 160-character summary with keywords.
+4. Category: {category}
+5. Body: Structure content using subheaders in Heading 2, Arial font, size 17, bold.
+6. Conclusion: Summarise key points.
+7. Disclaimer: "This content is for educational purposes only and does not constitute investment advice."
 
-Requirements:
-- Title in Heading 1, Arial font, size 20, bold.
-- Subheaders in Heading 2, Arial font, size 17, bold.
-- Include a concise summary of 160 characters with keywords.
-- Use ₹, $, and % symbols correctly.
-- Avoid hyphens in the body content.
-- End with a clear disclaimer that this content is for educational purposes only and does not constitute investment advice.
-- Structure the blog professionally with an introduction, well-defined sections, and a conclusion summarising the report.
+Rules:
+- No hyphens in text body (use symbols like ₹, $, %).
+- Ensure clarity, structure, and professionalism.
+- Output in plain Markdown format with proper spacing and bold elements.
 
-Content to base the article on:
+Source Report:
 {text}
 """
 
@@ -35,15 +38,15 @@ Content to base the article on:
         temperature=0.7
     )
 
-    article = response.choices[0].message.content
+    content = response.choices[0].message.content
 
-    # Try to extract the title (assumes it's first line starting with "# ")
-    title_match = re.search(r'^# (.+)', article, re.MULTILINE)
-    if title_match:
-        title = title_match.group(1)
-        slug_url = slugify(title)
-        article = f"**Slug URL:** {slug_url}\n\n" + article
+    # Extract title (first markdown heading)
+    match = re.search(r'^# (.+)', content, re.MULTILINE)
+    if match:
+        title = match.group(1)
+        slug = slugify(title)
+        content = f"Slug URL: {slug}\n\n{content}"
     else:
-        article = "**Slug URL:** [Could not auto-generate]\n\n" + article
+        content = "Slug URL: could-not-generate\n\n" + content
 
-    return article
+    return content

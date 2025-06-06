@@ -1,5 +1,9 @@
 import openai
 import re
+import os
+
+# Load OpenAI API key securely from environment variable
+client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def slugify(title):
     slug = re.sub(r'[^a-zA-Z0-9 ]', '', title)
@@ -33,13 +37,13 @@ Important instructions:
 - Output only the clean final formatted article as plain text
     """
 
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.7
     )
 
-    result = response.choices[0].message['content']
+    result = response.choices[0].message.content.strip()
 
     # Extract title and slugify
     title_match = re.search(r'^(.+)', result)

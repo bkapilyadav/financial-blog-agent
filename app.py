@@ -8,15 +8,17 @@ st.set_page_config(page_title="Financial Report Blog AI", layout="centered")
 
 st.title("📊 Financial Blog Generator AI")
 
-# Request OpenAI API key upfront
-openai_key = st.text_input("Enter your OpenAI API key", type="password")
+# Use API key from env if available, else ask user
+openai_key = os.getenv("OPENAI_API_KEY")
+
 if not openai_key:
-    st.warning("Please enter your OpenAI API key to continue.")
-    st.stop()
+    openai_key = st.text_input("Enter your OpenAI API key", type="password")
+    if not openai_key:
+        st.warning("Please enter your OpenAI API key to continue.")
+        st.stop()
 
 os.environ["OPENAI_API_KEY"] = openai_key
 
-# Input fields for URL and category
 url = st.text_input("Report URL")
 category = st.selectbox("Select Category", ["Stock", "IPO", "Business News", "Finance"])
 

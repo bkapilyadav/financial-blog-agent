@@ -1,32 +1,35 @@
-import openai
+from openai import OpenAI
 import os
 
-def generate_blog_content(full_text, url, category):
-    openai.api_key = os.getenv("OPENAI_API_KEY")
+def generate_blog_content(text, url, category):
+    client = OpenAI()  # Automatically picks up OPENAI_API_KEY from environment
 
     prompt = f"""
-You are a financial blog writer. Using the content below, generate a unique, UK English article for a financial blog.
+You are a professional financial blogger.
 
-Instructions:
-- Include slug: {url.split('//')[-1].split('/')[0]}
-- Title (H1, Arial, size 20, bold)
-- Summary (160 characters with SEO keywords)
-- Category: {category}
-- Subheaders (H2, Arial, size 17, bold)
-- Symbols like ₹, $, % (no per cent or hyphens)
-- Avoid recommendations. Only informative.
-- End with a Conclusion + Disclaimer (educational purpose, investment risks)
+Generate a unique, plagiarism-free financial blog article in UK English based on the following content extracted from the URL: {url}.
 
-Content to research:
-\"\"\"
-{full_text}
-\"\"\"
+Category: {category}
+
+Requirements:
+- Title in Heading 1, Arial font, size 20, bold.
+- Subheaders in Heading 2, Arial font, size 17, bold.
+- Include a concise summary of 160 characters with keywords.
+- Use ₹, $, and % symbols correctly.
+- Avoid hyphens in the body content.
+- Include a blog-specific slug URL.
+- End with a clear disclaimer that this content is for educational purposes only and does not constitute investment advice.
+- Structure the blog professionally with an introduction, well-defined sections, and a conclusion summarising the report.
+
+Content to base the article on:
+{text}
 """
 
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.7
     )
-    
-    return response.choices[0].message["content"]
+
+    article = response.choices[0].message.content
+    return article

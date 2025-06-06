@@ -1,59 +1,57 @@
 import openai
 import re
-import os
-
-# Load OpenAI API key securely from environment variable
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def slugify(title):
-    slug = re.sub(r'[^a-zA-Z0-9 ]', '', title)
-    slug = re.sub(r'\s+', '-', slug.strip().lower())
+    # Convert title to slug URL format: lowercase, remove special chars, replace spaces with hyphens
+    slug = re.sub(r'[^\w\s-]', '', title).strip().lower()
+    slug = re.sub(r'[-\s]+', '-', slug)
     return slug
 
-def generate_blog_content(text, source_url, category):
+def generate_blog_content(article_text, url, category):
+    # Extract title keywords for slug generation
     prompt = f"""
-You are an expert UK-based financial journalist.
+You are a professional financial blog writer. Based on the article content provided below, generate a blog in UK English with the following format and rules:
 
-Write a professional and unique financial blog article based on the following report content:
+1. Do not mention the word "Heading 1" or "Heading 2" in the output.
+2. Use proper formatting as per instructions without labels like "Body", "Title", etc.
+3. Do not repeat any line or section.
+4. Use % instead of 'percent', ₹ or $ instead of 'rupees' or 'dollars'. Avoid hyphens in the body content.
 
-{text}
+Use this format strictly:
 
-Follow these formatting rules:
-
-a. Generate a slug URL using only lowercase words from the title, separated by hyphens. Do NOT include the source URL.
-b. Craft a clear and engaging title (Heading 1, Arial, size 20, bold).
-c. Provide a concise summary (max 160 characters) including keywords.
-d. Category should be: {category}
-e. Structure blog content using Heading 2 for subheaders (Arial, size 17, bold) — include 3 to 5 such sections.
-f. Add a final paragraph titled 'Conclusion' with a summary.
-g. Add this exact disclaimer at the end:
+a. Slug URL — only use lowercase words from the blog title separated by hyphens.
+b. Title — format as: Heading 1, Arial font, size 20, bold.
+c. Summary — one sentence under 160 characters with keywords.
+d. Category — use the exact user-provided category, or default to "Market Update".
+e. Use clear subheaders — format as Heading 2, Arial font, size 17, bold.
+f. Conclusion — a short summary section.
+g. Add the mandatory Disclaimer at the end exactly as below.
 
 Disclaimer: This blog has been written exclusively for educational purposes. The securities or companies mentioned are only examples and not recommendations. This does not constitute a personal recommendation or investment advice. It does not aim to influence any individual or entity to make investment decisions. Recipients should conduct their own research and assessments to form an independent opinion about investment decisions. Investments in the securities market are subject to market risks. Read all the related documents carefully before investing.
 
-Important instructions:
-- Use UK English
-- Use symbols like ₹, $ and % instead of words
-- Do not use hyphens in the main body content
-- Output only the clean final formatted article as plain text
-    """
+--- Begin article content ---
 
-    response = client.chat.completions.create(
+{article_text}
+
+--- End article content ---
+"""
+
+    # Call OpenAI API
+    response = openai.ChatCompletion.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.7
     )
 
-    result = response.choices[0].message.content.strip()
+    blog_text = response['choices'][0]['message']['content']
 
-    # Extract title and slugify
-    title_match = re.search(r'^(.+)', result)
-    title = title_match.group(1).strip() if title_match else None
-    slug_url = slugify(title) if title else "could-not-generate"
+    # Try extracting the blog title for slug generation
+    title_match = re.search(r'Title:\s*(.*)', blog_text)
+    if title_match:
+        title = title_match.group(1).strip()
+        slug = slugify(title)
+        blog_text = re.sub(r'Slug URL:.*', f'Slug URL: {slug}', blog_text)
+    else:
+        blog_text = re.sub(r'Slug URL:.*', f'Slug URL: could-not-generate', blog_text)
 
-    blog_output = f"""Final Blog Output
-
-Slug URL: {slug_url}
-
-{result}
-"""
-    return blog_output
+    return blog_text

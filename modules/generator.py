@@ -1,54 +1,43 @@
-import re
-from openai import OpenAI
+import openai
+import os
+from modules.formatter import format_blog
 
-client = OpenAI()
+openai.api_key = os.getenv("OPENAI_API_KEY")  # Streamlit secrets or environment variable
 
-def slugify(title: str) -> str:
-    slug = re.sub(r'[^\w\s-]', '', title).strip().lower()
-    slug = re.sub(r'[-\s]+', '-', slug)
-    return slug
+def generate_blog_content(content, url, category):
+    title_prompt = f"Give an SEO-friendly blog title based on the following news:\n\n{content[:1000]}"
+    slug_prompt = "Convert the following blog title into a lowercase slug URL format (no link, just words, hyphen-separated)."
 
-def generate_blog_content(article_text: str, url: str, category: str) -> str:
-    prompt = f"""
-You are a professional financial blog writer. Follow these instructions strictly:
-
-a. Create a slug URL from the title words only (no full URL).
-b. Craft a blog title in Heading 1 with Arial font, size 20, bold.
-c. Provide a concise summary (max 160 characters) with important keywords.
-d. Set the article category (e.g., Market Update, Business News, Stock, IPO).
-e. Use subheaders in Heading 2 with Arial font, size 17, bold (do NOT include the phrase 'Heading 2' literally).
-f. Add a conclusion paragraph summarizing the report.
-g. Add the following disclaimer exactly at the end:
-
-Disclaimer: This blog has been written exclusively for educational purposes. The securities or companies mentioned are only examples and not recommendations. This does not constitute a personal recommendation or investment advice. It does not aim to influence any individual or entity to make investment decisions. Recipients should conduct their own research and assessments to form an independent opinion about investment decisions. Investments in the securities market are subject to market risks. Read all the related documents carefully before investing.
-
-Input article text:
-{article_text}
-
-Category: {category}
-
-Please generate the formatted blog accordingly.
-"""
-
-    response = client.chat.completions.create(
+    title_response = openai.chat.completions.create(
         model="gpt-4",
-        messages=[{"role": "user", "content": prompt}],
+        messages=[{"role": "user", "content": title_prompt}]
+    )
+    title = title_response.choices[0].message.content.strip()
+
+    slug_response = openai.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": f"{slug_prompt}\n\n{title}"}]
+    )
+    slug = slug_response.choices[0].message.content.strip().lower().replace(" ", "-")
+
+    blog_prompt = (
+        f"Write a blog in the following format:\n"
+        f"a. Include only slug URL words not link specific to the title.\n"
+        f"b. Craft a title in Heading 1, Arial font, size 20, bold.\n"
+        f"c. Provide a concise summary (160 characters) with keywords.\n"
+        f"d. Define the article category: {category}\n"
+        f"e. Structure content with subheaders in Heading 2, Arial font, size 17, bold.\n"
+        f"f. Add a short conclusion paragraph.\n"
+        f"g. Add this Disclaimer strictly:\n"
+        f"Disclaimer: This blog has been written exclusively for educational purposes. The securities or companies mentioned are only examples and not recommendations. This does not constitute a personal recommendation or investment advice. It does not aim to influence any individual or entity to make investment decisions. Recipients should conduct their own research and assessments to form an independent opinion about investment decisions. Investments in the securities market are subject to market risks. Read all the related documents carefully before investing.\n\n"
+        f"News Content:\n{content[:3000]}"
+    )
+
+    blog_response = openai.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": blog_prompt}],
         temperature=0.7
     )
 
-    blog_text = response.choices[0].message.content
-
-    # Extract title line to create slug
-    title_match = re.search(r'^#+\s*(.*)', blog_text, re.MULTILINE)
-    if title_match:
-        title = title_match.group(1).strip()
-        slug = slugify(title)
-        # Replace slug URL placeholder or insert slug URL line
-        if "Slug URL:" in blog_text:
-            blog_text = re.sub(r'Slug URL:.*', f'Slug URL: {slug}', blog_text)
-        else:
-            blog_text = f"Slug URL: {slug}\n\n" + blog_text
-    else:
-        blog_text = f"Slug URL: could-not-generate\n\n" + blog_text
-
-    return blog_text
+    blog = blog_response.choices[0].message.content
+    return format_blog(slug, title, blog)

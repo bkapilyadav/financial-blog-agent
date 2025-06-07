@@ -1,16 +1,13 @@
 import requests
 from bs4 import BeautifulSoup
 
-def extract_full_text(url):
+def scrape_content(url):
     try:
-        response = requests.get(url, timeout=10)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        # Remove unwanted tags
-        for tag in soup(['script', 'style', 'noscript', 'iframe']):
-            tag.decompose()
-        
-        text = ' '.join(p.get_text() for p in soup.find_all(['p', 'h1', 'h2', 'li']))
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        response = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(response.content, "html.parser")
+        paragraphs = soup.find_all('p')
+        text = " ".join(p.get_text() for p in paragraphs)
         return text.strip()
-    except Exception as e:
-        return f"Error while scraping: {str(e)}"
+    except Exception:
+        return None

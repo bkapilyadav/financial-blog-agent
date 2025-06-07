@@ -1,8 +1,7 @@
-import markdown2
-
-def format_for_display(content):
-    """
-    Converts raw markdown/structured text into HTML for Streamlit.
-    """
-    html_content = markdown2.markdown(content)
-    return html_content
+def format_blog(slug, title, body):
+    formatted = f"""
+<p><strong>Slug URL:</strong> {slug}</p>
+<h1 style='font-family:Arial; font-size:20px; font-weight:bold'>{title}</h1>
+{body}
+"""
+    return formatted
